@@ -1,0 +1,734 @@
+﻿<style type="text/css">
+td {
+	border: black 1px solid ;
+}
+td {
+	width : 100px; 
+	height : 100px;
+	border: 0;
+}
+h1{
+	display: inline;
+}
+#Turn_Play{
+	font-size: x-large;
+}
+#Credit table td{
+	width :100px; 
+	height : 30px;
+}
+#Insert td{
+	width :345px; 
+	height : 30px;
+}
+#Mode , #Insert, #Credit {
+	margin-top : 15%;
+}
+#Start{
+	margin-top: 5%;
+}
+#Game{
+	margin-top: 5%;
+}
+#chess_table{
+	text-align: center
+}
+body{
+	background-repeat:no-repeat;
+background-attachment:fixed;
+background-position:center; 
+background-size: cover;
+}
+</style>
+<script src="jquery-1.9.1.js"></script>
+<script>
+	var Table_Size = 7;				// Table Board size
+	var turn = true;				// Turn false = computer : true = player
+	var SetDeep = 7;				// Set Deep Move 1 = current set min = 2 // set 1,3,5,7 old only 1 ตา คือคิด ฝ่ายตรงข้ามที่น้อยที่สุด
+	var Table_Chess;				// Table Chess
+	var count=0;					// All result Can Move in deep define
+	var result_score = new Array();	// All result Array max move
+	var result_move = new Array();	// All result Array Step move
+	var result_best = new Array();	// All result Array best max move 
+	var Temp_text="";
+	var block = 0;
+</script>
+<script src="house_ai.js"></script>
+<script>
+
+
+var Temp_table = create_table();	// Crate Table N*N
+$(document).ready(function(){
+	$("#Start").show();
+	$("#Mode").hide();
+	$("#Insert").hide();
+	$("#Game").hide();
+	$("#Back").hide();
+	$("#Credit").hide();
+});
+
+
+//function choose mode game
+function Play(){
+	$("#Insert").show();
+	$("#Start").hide();
+}
+var player_name="human";
+function Choose_Mode(){
+	$("#Mode").show();
+	$("#Insert").hide();
+}
+function Back(){
+	$("#Start").show();
+	$("#Insert").hide();
+	$("#Mode").hide();
+	$("#Game").hide();
+	$("#Back").hide();
+	$("#Credit").hide();
+	$("#Player_Name").val("");
+}
+function Credit(){
+	$("#Start").hide();
+	$("#Insert").hide();
+	$("#Mode").hide();
+	$("#Game").hide();
+	$("#Back").hide();
+	$("#Credit").show();
+	$("#Back").show();
+}
+//function set mode game
+function Easy(){
+	SetDeep = Math.floor(Math.random()*3)+1;
+	console.log(SetDeep);
+	new_game();
+}
+function Normal(){
+	SetDeep = Math.floor(Math.random()*3)+2;
+	console.log(SetDeep);
+	new_game();
+}
+function Hard(){
+	SetDeep = Math.floor(Math.random()*3)+4;
+	console.log(SetDeep);
+	new_game();
+}
+//function set mode game
+
+// function check turn
+function turn_play(){
+	turn = !turn;
+	if(turn)
+	{
+		$("#Turn_Play").text( player_name );
+		$("#Turn_Play").css('color','blue');
+		$("#house").attr('onclick','alertit()');
+	}
+	else
+	{
+		$("#Turn_Play").text("Computer");
+		$("#Turn_Play").css('color','red');
+		$("#house").removeAttr('onclick','alertit()');
+		setTimeout("cpu_think();",500);
+	}
+}
+
+
+// function new game
+function new_game(){
+	$("#Mode").hide();
+	$("#Game").show();
+	if( $("#chess_table").length == 1 )
+	{
+		clear_table_ui();
+	}
+	create_table_ui();
+	
+	turn = true;
+	$("#Turn_Play").text( player_name );
+	$("#Turn_Play").css('color','blue');
+	Temp_table = create_table();
+	position = rand().split(",") ;
+	Table_Chess = new ChessHouse( position[1] , position[0] , Temp_table );
+	//add_block( block );
+}
+
+// function create table [UI]
+function create_table_ui(){
+	if( $("#chess_table").length == 0)
+	{
+		var Table = $('<table id="chess_table"></table>'); 
+		var tr = $('<tr></tr>') ; 
+		var td = '<td background="images/bg.jpg"></td>';
+		for(var i=0 ; i< Table_Size ; i++)
+			tr.append( td ) ;
+		for(var i=0 ; i< Table_Size ; i++)
+			Table.append( tr.clone() );
+		$("#tables").append( Table );
+	}
+}
+
+// function random house x:y
+function rand(){
+	if($("#house").length == 0)
+	{
+		var x = Math.floor((Math.random()*10)); 
+		var y= Math.floor((Math.random()*10)); 
+		while( x >= Table_Size )
+			x = Math.floor((Math.random()*10)); 
+		while( y >= Table_Size )
+			y = Math.floor((Math.random()*10));
+		var house = $('<img id="house" src="images/house.jpg" width="50px" height="50px" onclick="alertit();">'); 
+		$("#chess_table tr:eq("+ x +") td:eq("+ y +")").append( house );
+		return x+","+y;
+	}
+}
+
+function add_block( block ){
+	for( var i=0 ; i< block ;i++ )
+	{
+		var x = Math.floor((Math.random()*Table_Size)); 
+		var y= Math.floor((Math.random()*Table_Size)); 
+		$("#chess_table tr:eq("+ x +") td:eq("+ y +")").attr('background','images/red.jpg' );
+		Table_Chess.Table[ x ][ y ] = 1;
+	}
+}
+
+// clear table [UI]
+function clear_table_ui(){
+	$("#tables").empty();
+}
+
+// clear chess [UI]
+function clear_Chess(){
+	$("#house").remove();
+}
+
+// clear color light bule [house can move]
+function clear_color(){
+
+	var rowCount = $('#chess_table tr').length;
+	var CellCount = $('#chess_table tr:eq(0) td').length;
+	for(var i=0 ; i< rowCount ; i++)
+	{
+		for(var j=0 ; j< CellCount ; j++)
+		{
+			var color = $("#chess_table tr:eq("+ i +") td:eq("+ j +")").attr('background');
+			if( color.indexOf("images/red.jpg") == -1)
+			{
+				$("#chess_table tr:eq("+ i +") td:eq("+ j +")").removeAttr('style');
+			}
+			$("#chess_table tr:eq("+ i +") td:eq("+ j +")").removeAttr('onclick');
+		}
+	}
+	can_move();
+}
+
+// lock table move
+function lock(i,j){
+
+	$("#chess_table tr:eq("+ i +") td:eq("+ j +")").attr('background','images/red.jpg' );
+	//alert("lock");
+}
+
+// check house can move if = 0 Computer Win
+function can_move(){
+	current = Table_Chess;
+	var can_move_it = 0;
+
+	var stop = moveTop_left( current.X , current.Y );
+	var move = check_move( stop ) ;
+	if(move)
+		if(current.Table[ stop[1] ][ stop[0] ] == 0)
+			can_move_it++;
+	var stop = moveTop_right( current.X , current.Y );
+	var move = check_move( stop ) ;
+	if(move)
+		if(current.Table[ stop[1] ][ stop[0] ] == 0)
+			can_move_it++;
+	var stop = moveLeft_top( current.X , current.Y );
+	var move = check_move( stop ) ;
+	if(move)
+		if(current.Table[ stop[1] ][ stop[0] ] == 0)
+			can_move_it++;
+	var stop = moveRight_top( current.X , current.Y );
+	var move = check_move( stop ) ;
+	if(move)
+		if(current.Table[ stop[1] ][ stop[0] ] == 0)
+			can_move_it++;
+	var stop = moveLeft_down( current.X , current.Y );
+	var move = check_move( stop ) ;
+	if(move)
+		if(current.Table[ stop[1] ][ stop[0] ] == 0)
+			can_move_it++;
+	var stop = moveRight_down( current.X , current.Y );
+	var move = check_move( stop ) ;
+	if(move)
+		if(current.Table[ stop[1] ][ stop[0] ] == 0)
+			can_move_it++;
+	var stop = moveDown_left( current.X , current.Y );
+	var move = check_move( stop ) ;
+	if(move)
+		if(current.Table[ stop[1] ][ stop[0] ] == 0)
+			can_move_it++;
+	var stop = moveDown_right( current.X , current.Y );
+	var move = check_move( stop ) ;
+	if(move)
+		if(current.Table[ stop[1] ][ stop[0] ] == 0)
+			can_move_it++;	
+	if(can_move_it==0)		
+	{
+		var text;
+		if(turn)
+			text = player_name;
+		else
+			text = "Computer";
+		$("#Turn_Play").text(text+ " Win!!" );
+		alert("End Game : "+text+" Win!!");
+		$("#house").removeAttr('onclick');
+		$("#Back").show();
+	}
+	else
+		turn_play();
+}
+
+function moveTop_left_ui(){
+	var current_x = $("#house").parent()[0].cellIndex - 1;
+	var current_y = $("#house").parent().parent()[0].rowIndex - 2;
+	if( current_x < 0 || current_y < 0 )
+		alert("ERROR");
+	else
+	{
+		var color = $("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")").attr('background');
+			if( color.indexOf("images/red.jpg") == -1 )
+			{
+				$("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")").append( $("#house") );
+				lock( current_y+2 , current_x+1 );	
+			}
+	}
+	Table_Chess.Table[ current_y ][ current_x ] = 1;
+	Table_Chess.X = current_x;
+	Table_Chess.Y = current_y;
+	clear_color(); 
+}
+
+function moveTop_right_ui(){
+	var current_x = $("#house").parent()[0].cellIndex + 1;
+	var current_y = $("#house").parent().parent()[0].rowIndex - 2;
+	if( current_x < 0 || current_y < 0 )
+		alert("ERROR");
+	else
+	{
+		var color = $("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")").attr('background');
+			if( color.indexOf("images/red.jpg") == -1 )
+			{
+				$("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")").append( $("#house") );
+				lock( current_y+2 , current_x-1 ); 
+			}
+	}
+	Table_Chess.Table[ current_y ][ current_x ] = 1;
+	Table_Chess.X = current_x;
+	Table_Chess.Y = current_y;
+	clear_color(); 
+}
+
+function moveDown_left_ui(){
+	var current_x = $("#house").parent()[0].cellIndex - 1;
+	var current_y = $("#house").parent().parent()[0].rowIndex + 2;
+	if( current_x < 0 || current_y < 0 )
+		alert("ERROR");
+	else
+	{
+		var color = $("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")").attr('background');
+			if( color.indexOf("images/red.jpg") == -1 )
+			{
+				$("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")").append( $("#house") );
+				lock( current_y-2 , current_x+1 );
+			}
+	}
+	Table_Chess.Table[ current_y ][ current_x ] = 1;
+	Table_Chess.X = current_x;
+	Table_Chess.Y = current_y;
+	clear_color(); 
+}
+
+function moveDown_right_ui(){
+	var current_x = $("#house").parent()[0].cellIndex + 1;
+	var current_y = $("#house").parent().parent()[0].rowIndex + 2;
+	if( current_x < 0 || current_y < 0 )
+		alert("ERROR");
+	else
+	{
+		var color = $("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")").attr('background');
+			if( color.indexOf("images/red.jpg") == -1 )
+			{
+				$("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")").append( $("#house") );
+				lock( current_y-2 , current_x-1 );
+			}
+	}
+	Table_Chess.Table[ current_y ][ current_x ] = 1;
+	Table_Chess.X = current_x;
+	Table_Chess.Y = current_y;
+	clear_color(); 
+}
+
+function moveLeft_top_ui(){
+	var current_x = $("#house").parent()[0].cellIndex - 2;
+	var current_y = $("#house").parent().parent()[0].rowIndex - 1;
+	if( current_x < 0 || current_y < 0 )
+		alert("ERROR");
+	else
+	{
+		var color = $("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")").attr('background');
+			if( color.indexOf("images/red.jpg") == -1 )
+			{
+				$("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")").append( $("#house") );
+				lock( current_y+1 , current_x+2 );
+			}
+	}
+	Table_Chess.Table[ current_y ][ current_x ] = 1;
+	Table_Chess.X = current_x;
+	Table_Chess.Y = current_y;
+	clear_color(); 
+}
+
+function moveLeft_down_ui(){
+	var current_x = $("#house").parent()[0].cellIndex - 2;
+	var current_y = $("#house").parent().parent()[0].rowIndex + 1;
+	if( current_x < 0 || current_y < 0 )
+		alert("ERROR");
+	else
+	{
+		var color = $("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")").attr('background');
+			if( color.indexOf("images/red.jpg") == -1 )
+			{
+				$("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")").append( $("#house") );
+				lock( current_y-1 , current_x+2 );
+			}
+	}
+	Table_Chess.Table[ current_y ][ current_x ] = 1;
+	Table_Chess.X = current_x;
+	Table_Chess.Y = current_y;
+	clear_color(); 
+}
+
+function moveRight_top_ui(){
+	var current_x = $("#house").parent()[0].cellIndex + 2;
+	var current_y = $("#house").parent().parent()[0].rowIndex - 1;
+	if( current_x < 0 || current_y < 0 )
+		alert("ERROR");
+	else
+	{
+		var color = $("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")").attr('background');
+			if( color.indexOf("images/red.jpg") == -1 )
+			{
+				$("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")").append( $("#house") );
+				lock( current_y+1 , current_x-2 );
+			}
+	} 	
+	Table_Chess.Table[ current_y ][ current_x ] = 1;
+	Table_Chess.X = current_x;
+	Table_Chess.Y = current_y;
+	clear_color(); 
+}
+
+function moveRight_down_ui(){
+	var current_x = $("#house").parent()[0].cellIndex + 2;
+	var current_y = $("#house").parent().parent()[0].rowIndex + 1;
+	if( current_x < 0 || current_y < 0 )
+		alert("ERROR");
+	else
+	{
+		var color = $("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")").attr('background');
+			if( color.indexOf("images/red.jpg") == -1 )
+			{
+				$("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")").append( $("#house") );
+				lock( current_y-1 , current_x-2 );
+			}
+	}
+	Table_Chess.Table[ current_y ][ current_x ] = 1;
+	Table_Chess.X = current_x;
+	Table_Chess.Y = current_y;
+	clear_color(); 
+}
+
+function checkTop_left(){
+	var current_x = $("#house").parent()[0].cellIndex - 1;
+	var current_y = $("#house").parent().parent()[0].rowIndex - 2;
+	if( current_x >= 0 && current_y >= 0 )
+	{
+		var result = $("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")");
+		var color = result.attr('background');
+		if( color !==undefined )
+		if( color.indexOf("images/red.jpg") == -1)
+		{	
+			result.attr('style','background:url("images/blue.jpg")');
+			result.attr('onclick','moveTop_left_ui()');
+		}
+	}		
+}
+
+function checkTop_right(){
+	var current_x = $("#house").parent()[0].cellIndex + 1;
+	var current_y = $("#house").parent().parent()[0].rowIndex - 2;
+	if( current_x >= 0 && current_y >= 0 )		
+	{
+		var result = $("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")");
+		var color = result.attr('background');
+		if( color !==undefined )
+		if( color.indexOf("images/red.jpg") == -1)
+		{
+			result.attr('style','background:url("images/blue.jpg")');
+			result.attr('onclick','moveTop_right_ui()');
+		}
+	}				
+}
+
+function checkDown_left(){
+	var current_x = $("#house").parent()[0].cellIndex - 1;
+	var current_y = $("#house").parent().parent()[0].rowIndex + 2;
+	if( current_x >= 0 && current_y >= 0 )
+	{
+		var result = $("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")");
+		var color = result.attr('background');
+		if( color !==undefined )
+		if( color.indexOf("images/red.jpg") == -1)
+		{
+			result.attr('style','background:url("images/blue.jpg")');
+			result.attr('onclick','moveDown_left_ui()');
+		}
+	}						
+}
+
+function checkDown_right(){
+	var current_x = $("#house").parent()[0].cellIndex + 1;
+	var current_y = $("#house").parent().parent()[0].rowIndex + 2;
+	if( current_x >= 0 && current_y >= 0 )
+	{
+		var result = $("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")");
+		var color = result.attr('background');
+		if( color !==undefined )
+		if( color.indexOf("red.jpg") == -1)
+		{
+			result.attr('style','background:url("images/blue.jpg")');
+			result.attr('onclick','moveDown_right_ui()');
+		}
+	}					
+}
+
+function checkLeft_top(){
+	var current_x = $("#house").parent()[0].cellIndex - 2;
+	var current_y = $("#house").parent().parent()[0].rowIndex - 1;
+	if( current_x >= 0 && current_y >= 0 )
+	{
+		var result = $("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")");
+		var color = result.attr('background');
+		if( color !==undefined )
+		if( color.indexOf("images/red.jpg") == -1)
+		{
+			result.attr('style','background:url("images/blue.jpg")');
+			result.attr('onclick','moveLeft_top_ui()');
+		}
+	}						
+}
+
+function checkLeft_down(){
+	var current_x = $("#house").parent()[0].cellIndex - 2;
+	var current_y = $("#house").parent().parent()[0].rowIndex + 1;
+	if( current_x >= 0 && current_y >= 0 )
+	{
+		var result = $("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")");
+		var color = result.attr('background');
+		if( color !==undefined )
+		if( color.indexOf("images/red.jpg") == -1)
+		{
+			result.attr('style','background:url("images/blue.jpg")');
+			result.attr('onclick','moveLeft_down_ui()');
+	}	}
+}
+
+function checkRight_top(){
+	var current_x = $("#house").parent()[0].cellIndex + 2;
+	var current_y = $("#house").parent().parent()[0].rowIndex - 1;
+	if( current_x >= 0 && current_y >= 0 )
+	{
+		var result = $("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")");
+		var color = result.attr('background');
+		if( color !==undefined )
+		if( color.indexOf("images/red.jpg") == -1)
+		{
+			result.attr('style','background:url("images/blue.jpg")');
+			result.attr('onclick','moveRight_top_ui()');
+		}
+	}							
+}
+
+function checkRight_down(){
+	var current_x = $("#house").parent()[0].cellIndex + 2;
+	var current_y = $("#house").parent().parent()[0].rowIndex + 1;
+	if( current_x >= 0 && current_y >= 0 )	
+	{
+		var result = $("#chess_table tr:eq("+ current_y +") td:eq("+ current_x +")");
+		var color = result.attr('background');
+		if( color !==undefined )
+		if( color.indexOf("images/red.jpg") == -1)
+		{
+			result.attr('style','background:url("images/blue.jpg")');
+			result.attr('onclick','moveRight_down_ui()');
+		}
+	}					
+}
+
+function alertit(){
+	//var house_x = $("#house").parent()[0].cellIndex;
+	//var house_y = $("#house").parent().parent()[0].rowIndex; 
+	//alert( house_x +" "+ house_y ); 
+	checkTop_left();
+	checkTop_right();
+	checkDown_left();
+	checkDown_right();
+	checkLeft_top();
+	checkLeft_down();
+	checkRight_top();
+	checkRight_down();
+}
+
+function cpu_think(){
+	Table_Chess = new ChessHouse( Table_Chess.X , Table_Chess.Y , Table_Chess.Table );
+	create_tree( Table_Chess , 0 ) ;
+	//alert(Table_Chess.score);
+	if( Table_Chess.score == 0 )
+	{
+		$("#Turn_Play").text( player_name + " Win!!" );
+		//alert("End Game : Player Win!!");
+		$("#house").removeAttr('onclick');
+		$("#Back").show();
+	}
+	//alert(count +":"+result_score.length+":"+result_move.length+":"+result_best.length);
+	else
+	{
+		Minimax( Table_Chess );
+
+		//alert( result_best.length +" "+ Math.floor( Math.random()*result_best.length   )  );
+		var temp_best = result_best[ Math.floor( Math.random()*result_best.length ) ][0];
+		console.log("result array : "+result_best.length+" Move at "+temp_best );
+				if( temp_best == 0 )
+				{
+					moveTop_left_ui();
+				}
+				if( temp_best == 1 )
+				{
+					moveTop_right_ui();
+				}
+				if( temp_best == 2 )
+				{
+					moveDown_left_ui();
+				}
+				if( temp_best == 3 )
+				{
+					moveDown_right_ui();
+				}
+				if( temp_best == 4 )
+				{
+					moveLeft_top_ui();
+				}
+				if( temp_best == 5 )
+				{
+					moveLeft_down_ui();
+				}
+				if( temp_best == 6 )
+				{
+					moveRight_top_ui();
+				}
+				if( temp_best == 7 )
+				{
+					moveRight_down_ui();
+				}
+
+	}
+	$("#Minimax").text( Temp_text );
+}
+
+</script>
+<body background="">
+<center>
+
+<div id="Start">
+	<input type="image" onclick="Play();"  src="./button/play.png" alt="Play">
+	<br>
+	<input type="image" onclick="Credit();"  src="./button/credit.jpg" alt="Credit">
+</div>
+
+<div id="Insert">
+	<table border="0">
+	<tr>
+		<td>
+			<input type="image" onclick="Choose_Mode();" alt="Choose Mode" src="./button/choosemode.png" height="93px">
+			<input type="image" onclick="Back()" src="./button/back.png" alt="Back"  height="100px">
+		</td>
+	</tr>
+	</table>
+</div>
+
+<div id="Game">
+	<h1>Turn :</h1><h2> <span id="Turn_Play"></span></h2>
+	<div id="tables"></div>
+</div>
+
+
+<div id="Mode" >
+	<input type="image" onclick="Easy();"  src="./button/easy.png" alt="Easy">
+	<input type="image" onclick="Normal();"  src="./button/normal.png" alt="Normal">
+	<input type="image" onclick="Hard();"  src="./button/hard.png" alt="Hard">
+	<input type="image" onclick="Back()" src="./button/back.png" alt="Back">
+</div>
+
+
+<div id="Credit">	
+	<table >
+		<tr><td style="text-align:center"><h1><b>Credit</b></h1></td></tr>
+	<tr>
+		<td style="text-align:center">Ai Project.</td>
+	</tr>
+	<tr>
+		<td style="text-align:center">Supachai Pluamjitta</td>
+	</tr>
+	<tr>
+		<td style="text-align:center">0875443010</td>
+	</tr>
+	<tr>
+		<td style="text-align:center">group1034@gmail.com</td>
+	</tr>
+	</table>
+</div>
+
+<div id="Back">
+	<input type="image" onclick="Back()" src="./button/back.png" alt="Back" width="100px" height="50px">
+</div>
+
+</center>
+</body>
+
+
+
+
+
+
+	<!-- 
+	<input type="button" onclick="create_table();" value="Create_Table">
+	<input type="button" onclick="rand();" value="random">
+	<input type="button" onclick="clear_Chess();" value="Clear_Chess">
+	<input type="button" onclick="clear_table_ui();" value="Clear">
+	<input type="button" onclick="computer_play();" value="computer_play">
+	<br>
+	 -->
+	<!-- 
+	<input type="button" onclick="moveTop_left_ui();" value="MoveTop_left">
+	<input type="button" onclick="moveTop_right_ui();" value="MoveTop_right">
+	<input type="button" onclick="moveDown_left_ui();" value="MoveDown_left">
+	<input type="button" onclick="moveDown_right_ui();" value="MoveDown_right">
+	<br>
+	<input type="button" onclick="moveLeft_top_ui();" value="MoveLeft_top">
+	<input type="button" onclick="moveLeft_down_ui();" value="MoveLeft_down">
+	<input type="button" onclick="moveRight_top_ui();" value="MoveRight_top">
+	<input type="button" onclick="moveRight_down_ui();" value="MoveRight_down">
+	 -->
